@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     var labels = application.assets.open("labels.txt").bufferedReader().readLines()
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -147,7 +148,8 @@ class MainActivity : AppCompatActivity() {
                 maxIdx = index
             }
         }
-        result.text = labels[maxIdx]
+        result.setText(maxIdx.toString())
+        //result.text = labels[maxIdx]
         Log.i("Tag","outputGenerator: $maxIdx")
         // Releases model resources if no longer used.
         model.close()
