@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.capstone.databinding.ActivityMainBinding
 import com.example.capstone.ml.Model
+import com.google.android.material.button.MaterialButtonToggleGroup
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.ops.NormalizeOp
 import org.tensorflow.lite.support.image.ImageProcessor
@@ -30,10 +31,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var imageView: ImageView
     private lateinit var button: Button
     private lateinit var result: TextView
-    private val GALLERY_REQUEST_CODE = 123
+    //private var GALLERY_REQUEST_CODE = 123
 
-    var labels = application.assets.open("labels.txt").bufferedReader().readLines()
-
+    lateinit var predBtn: Button
+    lateinit var loadBtn: Button
+    lateinit var resView: TextView
+    lateinit var bitmap: Bitmap
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +49,15 @@ class MainActivity : AppCompatActivity() {
         button = binding.btnTakeImage
         result = binding.result
 
-        val buttonLoad = binding.btnLoadImage
+        //val buttonLoad = binding.btnLoadImage
+        loadBtn = findViewById(R.id.btn_load_image)
+        predBtn = findViewById(R.id.predict)
+        resView = findViewById(R.id.result)
+        imageView = findViewById(R.id.imageView)
+
+
+
+        var labels = application.assets.open("labels.txt").bufferedReader().readLines()
 
         button.setOnClickListener{
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
@@ -61,21 +72,27 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-        button.setOnClickListener{
-            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED){
+//        buttonLoad.setOnClickListener{
+//            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE)
+//                == PackageManager.PERMISSION_GRANTED){
+//                val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+//                intent.type = "image/*"
+//
+//                val mimeTypes = arrayOf("image/jpeg","image/jpg","image/png")
+//                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+//                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+//                onresult.launch(intent)
+//            }
+//            else {
+//                requestPermission.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+//            }
+//        }
 
-                val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-                intent.type = "image/*"
-
-                val mimeTypes = arrayOf("image/jpeg","image/jpg","image/png")
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-                onresult.launch(intent)
-            }
-            else {
-                requestPermission.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-            }
+        loadBtn.setOnClickListener{
+            var intent = Intent()
+            intent.setAction(Intent.ACTION_GET_CONTENT)
+            intent.setType("image/*")
+            startActivityForResult(intent,100)
         }
         setContentView(R.layout.activity_main)
     }
@@ -97,29 +114,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     // get image from gallery
-    private val onresult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
-        Log.i("Tag","This is The Result: ${result.data} ${result.resultCode}")
-        onResultReceived(GALLERY_REQUEST_CODE, result)
-    }
+//    private val onresult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
+//        Log.i("Tag","This is The Result: ${result.data} ${result.resultCode}")
+//        onResultReceived(GALLERY_REQUEST_CODE, result)
+//    }
 
-    private fun onResultReceived(requestCode: Int, result: androidx.activity.result.ActivityResult){
-        when(requestCode){
-            GALLERY_REQUEST_CODE->{
-                if(result?.resultCode == Activity.RESULT_OK){
-                    result.data?.data?.let{uri->
-                        Log.i("Tag","onResultReceived: $uri")
-
-                        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
-                        imageView.setImageBitmap(bitmap)
-                        outputGenerator(bitmap)
-                    }
-                }
-                else{
-                    Log.e("Tag", "onActivityResult: Error in Selecting Image")
-                }
-            }
-        }
-    }
+//    private fun onResultReceived(requestCode: Int, result: androidx.activity.result.ActivityResult){
+//        when(requestCode){
+//            GALLERY_REQUEST_CODE->{
+//                if(result?.resultCode == Activity.RESULT_OK){
+//                    result.data?.data?.let{uri->
+//                        Log.i("Tag","onResultReceived: $uri")
+//
+//                        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
+//                        imageView.setImageBitmap(bitmap)
+//                        outputGenerator(bitmap)
+//                    }
+//                }
+//                else{
+//                    Log.e("Tag", "onActivityResult: Error in Selecting Image")
+//                }
+//            }
+//        }
+//    }
 
     private fun outputGenerator(bitmap: Bitmap){
         var tensorImage = TensorImage(DataType.FLOAT32)
@@ -153,5 +170,15 @@ class MainActivity : AppCompatActivity() {
         Log.i("Tag","outputGenerator: $maxIdx")
         // Releases model resources if no longer used.
         model.close()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == 100){
+            var uri = data?.data
+            bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, uri)
+            imageView.setImageBitmap(bitmap)
+        }
     }
 }
