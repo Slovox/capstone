@@ -16,7 +16,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.example.capstone.databinding.ActivityMainBinding
-import com.example.capstone.ml.Model
+import com.example.capstone.ml.Model4
 import com.google.android.material.button.MaterialButtonToggleGroup
 import org.tensorflow.lite.DataType
 import org.tensorflow.lite.support.common.ops.NormalizeOp
@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
 
         //image processor
         var imageProcessor = ImageProcessor.Builder()
-            .add(NormalizeOp(0.0f,255.0f))
+//            .add(NormalizeOp(0.0f,255.0f))
             .add(ResizeOp(256,256,ResizeOp.ResizeMethod.BILINEAR))
             .build()
 
@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
             var tensorImage = TensorImage(DataType.FLOAT32)
             tensorImage.load(bitmap)
 
-            val model = Model.newInstance(this)
+            val model = Model4.newInstance(this)
 
             // Creates inputs for reference.
             val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, 256, 256, 3), DataType.FLOAT32)
@@ -186,7 +186,7 @@ class MainActivity : AppCompatActivity() {
         tensorImage = imageProcessor.process(tensorImage)
 
         // model TFLite
-        val model = Model.newInstance(this)
+        val model = Model4.newInstance(this)
 
         // Creates inputs for reference.
         val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, 256, 256, 3), DataType.FLOAT32)
