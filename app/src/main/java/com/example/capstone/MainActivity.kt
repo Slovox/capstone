@@ -28,28 +28,30 @@ import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding : ActivityMainBinding
-    private lateinit var imageView: ImageView
+    //private lateinit var imageView: ImageView
     private lateinit var button: Button
     private lateinit var result: TextView
-    //private var GALLERY_REQUEST_CODE = 123
+    private var GALLERY_REQUEST_CODE = 123
 
     lateinit var predBtn: Button
     lateinit var loadBtn: Button
     lateinit var resView: TextView
     lateinit var bitmap: Bitmap
+    lateinit var imageView: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         val view = binding.root
-        setContentView(view)
+        //setContentView(view)
+        setContentView(R.layout.activity_main)
 
         imageView = binding.imageView
         button = binding.btnTakeImage
         result = binding.result
 
-        //val buttonLoad = binding.btnLoadImage
+        val buttonLoad = binding.btnLoadImage
         loadBtn = findViewById(R.id.btn_load_image)
         predBtn = findViewById(R.id.predict)
         resView = findViewById(R.id.result)
@@ -58,6 +60,14 @@ class MainActivity : AppCompatActivity() {
 
 
         var labels = application.assets.open("labels.txt").bufferedReader().readLines()
+
+        //image processor
+        var imageProcessor = ImageProcessor.Builder()
+            .add(NormalizeOp(0.0f,255.0f))
+            .add(ResizeOp(256,256,ResizeOp.ResizeMethod.BILINEAR))
+            .build()
+
+        //binding.btn_load_image.setOnClickListener { startGallery() }
 
         button.setOnClickListener{
             if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA)
@@ -72,21 +82,21 @@ class MainActivity : AppCompatActivity() {
         }
 
 
-//        buttonLoad.setOnClickListener{
-//            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE)
-//                == PackageManager.PERMISSION_GRANTED){
-//                val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
-//                intent.type = "image/*"
-//
-//                val mimeTypes = arrayOf("image/jpeg","image/jpg","image/png")
-//                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-//                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-//                onresult.launch(intent)
-//            }
-//            else {
-//                requestPermission.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-//            }
-//        }
+        buttonLoad.setOnClickListener{
+            if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED){
+                val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+                intent.type = "image/*"
+
+                val mimeTypes = arrayOf("image/jpeg","image/jpg","image/png")
+                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+                intent.flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                onresult.launch(intent)
+            }
+            else {
+                requestPermission.launch(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+        }
 
         loadBtn.setOnClickListener{
             var intent = Intent()
@@ -94,7 +104,34 @@ class MainActivity : AppCompatActivity() {
             intent.setType("image/*")
             startActivityForResult(intent,100)
         }
-        setContentView(R.layout.activity_main)
+        //setContentView(R.layout.activity_main)
+
+        predBtn.setOnClickListener{
+
+            var tensorImage = TensorImage(DataType.FLOAT32)
+            tensorImage.load(bitmap)
+
+            val model = Model.newInstance(this)
+
+            // Creates inputs for reference.
+            val inputFeature0 = TensorBuffer.createFixedSize(intArrayOf(1, 256, 256, 3), DataType.FLOAT32)
+            inputFeature0.loadBuffer(tensorImage.buffer)
+
+            // Runs model inference and gets result.
+            val outputs = model.process(inputFeature0)
+            val outputFeature0 = outputs.outputFeature0AsTensorBuffer.floatArray
+
+            var maxIdx = 0
+            outputFeature0.forEachIndexed{index, fl ->
+                if (outputFeature0[maxIdx] < fl){
+                    maxIdx = index
+                }
+            }
+            result.setText(labels[maxIdx])
+            // Releases model resources if no longer used.
+            model.close()
+
+        }
     }
     // request camera permission
     private val requestPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()){granted->
@@ -114,29 +151,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     // get image from gallery
-//    private val onresult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
-//        Log.i("Tag","This is The Result: ${result.data} ${result.resultCode}")
-//        onResultReceived(GALLERY_REQUEST_CODE, result)
-//    }
+    private val onresult = registerForActivityResult(ActivityResultContracts.StartActivityForResult()){result->
+        Log.i("Tag","This is The Result: ${result.data} ${result.resultCode}")
+        onResultReceived(GALLERY_REQUEST_CODE, result)
+    }
 
-//    private fun onResultReceived(requestCode: Int, result: androidx.activity.result.ActivityResult){
-//        when(requestCode){
-//            GALLERY_REQUEST_CODE->{
-//                if(result?.resultCode == Activity.RESULT_OK){
-//                    result.data?.data?.let{uri->
-//                        Log.i("Tag","onResultReceived: $uri")
-//
-//                        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
-//                        imageView.setImageBitmap(bitmap)
-//                        outputGenerator(bitmap)
-//                    }
-//                }
-//                else{
-//                    Log.e("Tag", "onActivityResult: Error in Selecting Image")
-//                }
-//            }
-//        }
-//    }
+    private fun onResultReceived(requestCode: Int, result: androidx.activity.result.ActivityResult){
+        when(requestCode){
+            GALLERY_REQUEST_CODE->{
+                if(result?.resultCode == Activity.RESULT_OK){
+                    result.data?.data?.let{uri->
+                        Log.i("Tag","onResultReceived: $uri")
+
+                        val bitmap = BitmapFactory.decodeStream(contentResolver.openInputStream(uri))
+                        imageView.setImageBitmap(bitmap)
+                        outputGenerator(bitmap)
+                    }
+                }
+                else{
+                    Log.e("Tag", "onActivityResult: Error in Selecting Image")
+                }
+            }
+        }
+    }
 
     private fun outputGenerator(bitmap: Bitmap){
         var tensorImage = TensorImage(DataType.FLOAT32)
@@ -181,4 +218,6 @@ class MainActivity : AppCompatActivity() {
             imageView.setImageBitmap(bitmap)
         }
     }
+
+
 }
